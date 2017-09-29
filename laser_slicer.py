@@ -22,6 +22,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 import argparse
+import os
 import tempfile
 
 
@@ -67,24 +68,65 @@ def get_scad_tmp_file():
     scad_file.close()
     return scad_file_name
 
-def slice_model( tmp_file, start_height, layer_height, end_height ):
-    layer_height = args.start_height
+def slice_model(
+    output_type,
+    model_name,
+    tmp_file,
+    start_height,
+    layer_height,
+    end_height
+):
+    current_layer_height = start_height
     layer_count = 1
-    while( layer_height < args.end_height ):
-        print "Creating layer " + str( layer_count ) + " at height " + str( layer_height )
+    while( current_layer_height < end_height ):
+        print "Creating layer " + str( layer_count ) + " at height " + str( current_layer_height )
+        create_slice(
+                output_type = output_type,
+                model_name = model_name,
+                tmp_file = tmp_file,
+                slice_height = current_layer_height,
+                layer_count = layer_count )
         layer_count += 1
-        layer_height += args.layer_height
+        current_layer_height += layer_height
 
+def create_slice(
+    output_type,
+    model_name,
+    tmp_file,
+    slice_height,
+    layer_count
+):
+    out_file_name = make_output_file_name(
+        output_type, model_name, layer_count );
+
+    print "    Outputting to " + out_file_name
+
+    out_file = file( out_file_name, 'w' )
+    out_file.write( 'projection( cut = true )'
+        ' translate( v = [ 0, 0, -' + str( slice_height ) + ' ] )'
+        ' import( "' + model_name + '" ); ' )
+    out_file.close()
+
+def make_output_file_name( output_type, model_name, layer_count ):
+    # TODO
+    # Pad layer_count
+    # Strip off old file extension
+    file_name = model_name + '_' + str( layer_count ) + '.' + output_type
+    return file_name
 
 args = parse_args()
 print "Input file: " + args.input
+print "Output type: " + args.output_type
 print "Start slicing height: " + str( args.start_height )
 print "End slicing height: " + str( args.end_height )
 print "Layer height: " + str( args.layer_height )
 
 scad_file_name = get_scad_tmp_file()
 slice_model(
+        output_type = args.output_type,
+        model_name = args.input,
         tmp_file = scad_file_name,
         start_height = args.start_height,
         layer_height = args.layer_height,
         end_height = args.end_height )
+os.unlink( scad_file_name )
