@@ -24,6 +24,7 @@
 import argparse
 import os
 import tempfile
+import subprocess
 
 
 def parse_args():
@@ -96,16 +97,18 @@ def create_slice(
     slice_height,
     layer_count
 ):
-    out_file_name = make_output_file_name(
+    out_model_file_name = make_output_file_name(
         output_type, model_name, layer_count );
 
-    print "    Outputting to " + out_file_name
+    print "    Outputting to " + out_model_file_name
 
-    out_file = file( out_file_name, 'w' )
-    out_file.write( 'projection( cut = true )'
+    out_scad = file( tmp_file, 'w' )
+    out_scad.write( 'projection( cut = true )'
         ' translate( v = [ 0, 0, -' + str( slice_height ) + ' ] )'
-        ' import( "' + model_name + '" ); ' )
-    out_file.close()
+        ' import( "' + os.path.abspath( model_name ) + '" ); ' )
+    out_scad.close()
+
+    run_openscad( out_model_file_name, tmp_file );
 
 def make_output_file_name( output_type, model_name, layer_count ):
     # TODO
@@ -114,12 +117,22 @@ def make_output_file_name( output_type, model_name, layer_count ):
     file_name = model_name + '_' + str( layer_count ) + '.' + output_type
     return file_name
 
+def run_openscad( out_model_file_name, scad_file ):
+    subprocess.call([
+        'openscad',
+        '-o', out_model_file_name,
+        scad_file
+    ])
+
 args = parse_args()
 print "Input file: " + args.input
 print "Output type: " + args.output_type
 print "Start slicing height: " + str( args.start_height )
 print "End slicing height: " + str( args.end_height )
 print "Layer height: " + str( args.layer_height )
+print ""
+print "=" * 10
+print ""
 
 scad_file_name = get_scad_tmp_file()
 slice_model(
